@@ -1,0 +1,14 @@
+# 1. Se crea el contenido en la carpeta dist
+npm run siam-deploy
+
+----
+# Para actualizar Angular
+
+npm run ng update -- --verbose
+npm run ng update @angular/core @angular/cli @angular/cdk @angular/material rxjs -- --verbose
+npm run ng serve
+npm install typescript@"~4.0.0"  --save-dev
+
+
+# Analisis de las dependencias
+npm run siam-check

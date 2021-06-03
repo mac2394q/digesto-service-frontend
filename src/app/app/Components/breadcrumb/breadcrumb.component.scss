@@ -1,0 +1,53 @@
+ul#breadcrumb {
+    list-style: none;
+    margin: 16px 0px;
+    border-radius: 4px;
+    padding: 0px;
+    border: 1px solid #ddd;
+    background: linear-gradient(#fff, #f9f9f9);
+    box-shadow: 0 5px 8px -10px rgba(0, 0, 0, 0.8);
+
+    li {
+        display: inline-flex;
+        line-height: 40px;
+
+        a {
+            color: #525f7f;
+            padding: 0px 12px;
+            letter-spacing: 0.8px;
+            position: relative;
+            min-width: 80px;
+            text-align: center;
+
+            &::before,
+            &::after {
+                border-style: solid;
+                border-width: 0px 1px 0px 0px;
+                border-color: rgba(0, 0, 0, 0.11);
+                content: "";
+                position: absolute;
+                height: 50%;
+                right: 0;
+                box-sizing: border-box;
+                transform-origin: 100% 50%;
+            }
+
+            &::before {
+                top: 0;
+                transform: skewX(30deg);
+            }
+
+            &::after {
+                bottom: 0;
+                transform: skewX(-30deg);
+            }
+
+            .homeMenu {
+                text-align: center;
+                height: 40px;
+                position: relative;
+                top: 8px;
+            }
+        }
+    }
+}

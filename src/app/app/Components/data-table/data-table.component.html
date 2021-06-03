@@ -1,0 +1,204 @@
+<div class="table-container">
+    <!-- Table toolbar -->
+    <div class="container-fluid table-toolbar-container">
+        <div class="row mb-2">
+            <div class="col-lg-4 col-sm-4 col-12">
+                <button class="btn mr-1" (click)="handleNewItemBtn()" *ngIf="newItemVisible">
+                    <mat-icon>add_circle_outline</mat-icon> Nuevo
+                </button>
+            </div>
+            <div class="col-lg-8 col-sm-8 col-12 align-right table-toolbar">
+                <input class="p-0 defaultInput inputSearch" style="max-width: 215px !important;"
+                    (keyup)="applyFilter($event.target.value)" placeholder="Buscar...">
+
+                <button class="btn" *ngIf="exportVisible" (click)="exporter.exportTable('xlsx')">
+                    <mat-icon>cloud_download</mat-icon> Excel
+                </button>
+
+                <button class="btn ml-1" [matMenuTriggerFor]="columnMenu" *ngIf="filterVisible">
+                    <mat-icon>list</mat-icon> Filtrar
+                </button>
+
+                <mat-menu #columnMenu="matMenu">
+                    <div class="va-mat-table-dragable-container" cdkDropList dkDropListLockAxis="y"
+                        cdkDropListOrientation="vertical">
+                        <div class="dragable-row" *ngFor="let column of columnInfo; let i = index" cdkDrag
+                            [cdkDragData]="{columnIndex: i, columnTitle: column.id}"
+                            (cdkDragDropped)="columnMenuDropped($event)">
+
+                            <ng-container
+                                *ngIf="column.type !== 'hidden' && column.type !== 'select' && column.type !== 'detail' && column.type !== 'modal'">
+                                <mat-icon cdkDragHandle>drag_indicator</mat-icon>
+                                <mat-checkbox [checked]="!column.hidden" (click)="$event.stopPropagation();"
+                                    (change)="toggleSelectedColumn(column.id)">
+                                    {{ util.toHTML(column.name) }}
+                                </mat-checkbox>
+
+                                <mat-card class="va-mat-table-drag-preview" *cdkDragPreview>
+                                    <mat-icon>drag_indicator</mat-icon>
+                                    <mat-checkbox [checked]="!column.hidden">
+                                        {{ util.toHTML(column.name) }}
+                                    </mat-checkbox>
+                                </mat-card>
+                            </ng-container>
+                        </div>
+                    </div>
+                </mat-menu>
+            </div>
+        </div>
+
+        <div class="row" *ngIf="!detailViewBottom">
+            <div class="col-12" style="padding-left: 9px; padding-right: 9px;">
+                <div class="row m-0 detailView" [@detailExpand]="detailViewAnimate ? 'expanded' : 'collapsed'"></div>
+            </div>
+        </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+        <!-- init table -->
+        <table id='mainTable' matTableExporter mat-table #exporter="matTableExporter" [dataSource]="dataSource" matSort>
+
+            <ng-container *ngFor="let col of columnInfo; let i = index;" [matColumnDef]="col.id">
+                <ng-container [ngSwitch]="col.type">
+
+                    <ng-container *ngSwitchCase="'hidden'">
+                        <th mat-header-cell *matHeaderCellDef style="display: none;"></th>
+                        <td mat-cell *matCellDef="let row;" style="display: none;"></td>
+                    </ng-container>
+
+                    <!-- Si la columna es un checkbox -->
+                    <ng-container *ngSwitchCase="'checkbox'">
+                        <th mat-header-cell *matHeaderCellDef [@fadeAnimation]>
+                            <div class="row m-0">
+                                <div class="col-12' pl-2 pr-0 txtth" [attr.data-column]='col.id'>
+                                    {{util.toHTML(col.name)}}
+                                </div>
+                            </div>
+                        </th>
+                        <td mat-cell *matCellDef="let row;">
+                            <ng-container *ngIf="row[col.id].forceInputMode; else onlyCheckMode">
+                                <div
+                                    [innerHTML]="this.createCheckBox(row[col.id], row.rowId, false, col.id) | sanitizeHtml">
+                                </div>
+                            </ng-container>
+                            <ng-template #onlyCheckMode>
+                                <div class="text-center">
+                                    <mat-checkbox (click)="$event.stopPropagation()"
+                                        (change)="$event ? selection.toggle(row) : null"
+                                        [checked]="getCheckboxState(row[col.id])" [disabled]="true">
+                                    </mat-checkbox>
+
+                                    <span class="checkbox-span"> {{row[col.id]?.filterValue}}</span>
+                                </div>
+
+                            </ng-template>
+                        </td>
+                    </ng-container>
+
+
+                    <!-- Si es el boton de Mostrar Info (Hard Coded: debe quedarse así) -->
+                    <ng-container *ngSwitchCase="'detail'">
+                        (click)="$event.stopPropagation();">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let row;">
+                            <button class="btn btn-success btn-extended-detail w100" [attr.data-rowid]="row.rowId"
+                                (click)="$event.stopPropagation(); openDetailInfoExtended(row, false)">
+                                <mat-icon>chat</mat-icon> + Info.
+                            </button>
+                        </td>
+                    </ng-container>
+
+                    <!-- aceptemos también botones, ¿por qué no - 25112020?-->
+                    <ng-container *ngSwitchCase="'button'">
+                        (click)="$event.stopPropagation();">
+                        <th mat-header-cell *matHeaderCellDef></th>
+                        <td mat-cell *matCellDef="let row;">
+                            <button class="btn {{row[col.id].btnType}} w100" [style]="row[col.id].style" [attr.data-rowid]="row.rowId"
+                                (click)="$event.stopPropagation(); this.clickOnTableBtn(row[col.id], row)">
+                                <ng-container *ngIf="row[col.id].iconName">
+                                    <mat-icon>{{row[col.id].iconName}}</mat-icon>
+                                </ng-container> {{row[col.id].alias}}
+                            </button>
+                        </td>
+                    </ng-container>
+
+                    <!-- De lo contrario haga la lógica normal-->
+                    <ng-container *ngSwitchDefault>
+                        <th mat-header-cell *matHeaderCellDef [@fadeAnimation]>
+
+                            <div class="row m-0">
+                                <div class="{{col.id.in(this.column2sort)  || this.column2sort == null ? 'col-9' : 'col-12'}} pl-2 pr-0 txtth"
+                                    [attr.data-column]='col.id'>
+                                    {{util.toHTML(col.name)}}
+                                </div>
+                                <ng-container *ngIf="col.id.in(this.column2sort) || this.column2sort == null">
+                                    <div class="col-3 nopadding d-flex flex-row-reverse" [attr.data-test]='col.id'>
+                                        <div mat-sort-header style="width: 50px;">
+                                            <button (click)="sortEvent($event)" class="grid-view-header-menu groupbtn"
+                                                mat-icon-button>
+                                                <mat-icon [attr.data-colid]="i">unfold_more</mat-icon>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </ng-container>
+                            </div>
+                        </th>
+
+                        <td mat-cell class='pl-2 pr-2' id='{{col.format === "money" ? "text-right" : ""}}'
+                            *matCellDef="let row;" (click)="tdHighlight($event)" [attr.data-tdclick]="false">
+                            <ng-container *ngIf="col.type === 'text' && row[col.id].forceInputMode; else onlyTextMode">
+                                <div
+                                    [innerHTML]="this.createDefaultInput(row[col.id], row.rowId, false, col.id) | sanitizeHtml">
+                                </div>
+                            </ng-container>
+                            <ng-template #onlyTextMode>
+                                <div [innerHTML]="this.getValue(row[col.id]) | sanitizeHtml">
+                                </div>
+                            </ng-template>
+                        </td>
+                    </ng-container>
+                </ng-container>
+
+            </ng-container>
+            <!-- Columnas TH -->
+
+
+            <tr mat-header-row *matHeaderRowDef="getDisplayedColumns(); sticky: true"></tr>
+
+            <!-- Columnas por defecto -->
+            <tr mat-row *matRowDef="let row; columns: getDisplayedColumns();" [attr.data-rowid]="row.rowId"
+                (dblclick)="handeDobleClickRow($event, row)">
+            </tr>
+        </table>
+    </div>
+
+    <div id="ajaxLoader" *ngIf="loading">
+        <mat-progress-spinner color="primary" mode="indeterminate">
+        </mat-progress-spinner>
+    </div>
+    <div id="ajaxLoader2" *ngIf="loading">
+        <div class='col-12'>
+            <div class='text-center'>Cargando Datos de la tabla...</div>
+        </div>
+    </div>
+
+    <div class="row" *ngIf="detailViewBottom">
+        <div class="col-12" style="padding-left: 9px; padding-right: 9px;">
+            <div class="row m-0 detailView" [@detailExpand]="detailViewAnimate ? 'expanded' : 'collapsed'"></div>
+        </div>
+    </div>
+
+    <mat-paginator [pageSizeOptions]="[10, 20, 50]" showFirstLastButtons></mat-paginator>
+
+    <ng-template #modalEelement>
+        <div class="closeContainer">
+            <button mat-mini-fab class="modal-close-btn" matDialogClose="no">
+                <i class="material-icons btn-detail-icon">close</i>
+            </button>
+        </div>
+        <h2 matDialogTitle>Seleccione un elemento con doble clic</h2>
+        <app-data-table [DTTitle]="'modal'" (doubleClickRowEmitter)="modalEventReciver($event)" [newItemVisible]="false"
+            [deleteItemVisible]="false" [filterVisible]="false" [exportVisible]="false">
+        </app-data-table>
+    </ng-template>
+</div>
